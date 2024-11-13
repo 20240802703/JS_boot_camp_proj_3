@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather API App</title>
+    <style>
+        /* Basic styling variables and setup */
+        :root {
+            --bg-color: linear-gradient(135deg, #6B8CEF, #9B6BEF);
+            --text-color: #333;
+            --input-bg: rgba(255, 255, 255, 0.9);
+            --button-bg: #6B8CEF;
+            --button-hover-bg: #5A7BE0;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --input-bg: #1e1e1e;
+            --button-bg: #BB86FC;
+            --button-hover-bg: #9A67EA;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            transition: background 0.3s, color 0.3s;
+            margin: 0;
+        }
+
+        .container {
+            background-color: var(--input-bg);
+            width: 100vw;
+            height: 100vh;
+            padding: 2rem;
+            box-sizing: border-box;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: var(--text-color);
+            padding: 0.3rem;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+
+        h1 {
+            margin-bottom: 1.5rem;
+            font-size: 2.2rem;
+            text-align: center;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .input-group input,
+        .input-group button {
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            border: 2px solid #e0e0e0;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: var(--button-bg);
+            outline: none;
+        }
+
+        .input-group input {
+            flex: 1;
+        }
+
+        button {
+            background-color: var(--button-bg);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--button-hover-bg);
+        }
+
+        button#forecast-toggle {
+            background-color: var(--button-bg);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        button#forecast-toggle:hover {
+            background-color: var(--button-hover-bg);
+        }
+
+        #weather-display,
+        #forecast-display {
+            margin-top: 1.5rem;
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .weather-card {
+            background-color: var(--input-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s;
+        }
+
+        .forecast-pills {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding: 1rem 0;
+        }
+
+        .forecast-pill {
+            background-color: var(--button-bg);
+            color: white;
+            padding: 1rem;
+            border-radius: 15px;
+            width: 18%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .temperature {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+
+        .error {
+            color: #e74c3c;
+            padding: 1rem;
+            border-radius: 8px;
+            background-color: #fdf0f0;
+        }
+
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+
+        #suggestions {
+            position: absolute;
+            top: calc(100% + 5px);
+            width: 100%;
+            max-width: 600px;
+            max-height: 150px;
+            overflow-y: auto;
+            background-color: var(--input-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+        }
+
+        #suggestions div {
+            padding: 0.75rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #suggestions div:hover {
+            background-color: var(--button-hover-bg);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="theme-toggle" onclick="toggleTheme()">🌗</button>
+        <h1>Weather Forecast</h1>
+        <div class="input-group">
+            <input type="text" id="api-key-input" placeholder="API Key">
+            <button id="save-api-key" onclick="saveApiKey()">Save</button>
+        </div>
+        <div class="input-group">
+            <input type="text" id="location-input" placeholder="Enter city name" oninput="getCitySuggestions()">
+            <button onclick="fetchWeather()">Get Weather</button>
+        </div>
+        <button onclick="toggleForecast()" id="forecast-toggle" style="display: none; margin-top: 1rem;">5-Day Forecast</button>
+        <button onclick="showApiKeys()" style="margin-top: 1rem;">Show a List of API Keys</button>
+        <button onclick="exportData()" style="margin-top: 1rem;">Export Data as CSV</button>
+        <div id="suggestions"></div>
+        <div id="weather-display"></div>
+        <div id="forecast-display" style="display: none;"></div>
+    </div>
+
+    <script>
+        let currentWeatherData = null;
+
+        function toggleTheme() {
+            document.body.dataset.theme = document.body.dataset.theme === 'dark' ? '' : 'dark';
+        }
+
+        function saveApiKey() {
+            const apiKey = document.getElementById('api-key-input').value.trim();
+            if (apiKey) {
+                localStorage.setItem('weatherApiKey', apiKey);
+                alert('API key saved.');
+            } else {
+                alert('Please enter a valid API key');
+            }
+        }
+
+        function showApiKeys() {
+            alert('1. f19a1756e7f84c9a96b120113241211\n2. 0311cedc9c3b90cd9a498f43b75bc35e');
+        }
+
+        function toggleForecast() {
+            const forecastDisplay = document.getElementById('forecast-display');
+            const weatherDisplay = document.getElementById('weather-display');
+            const forecastToggle = document.getElementById('forecast-toggle');
+
+            if (forecastDisplay.style.display === 'none') {
+                forecastDisplay.style.display = 'block';
+                weatherDisplay.style.display = 'none';
+                forecastToggle.innerText = 'Show Current Weather';
+                fetchForecast();
+            } else {
+                forecastDisplay.style.display = 'none';
+                weatherDisplay.style.display = 'block';
+                forecastToggle.innerText = 'Show 5-Day Forecast';
+            }
+        }
+
+        async function getCitySuggestions() {
+            const apiKey = document.getElementById('api-key-input').value.trim();
+            const location = document.getElementById('location-input').value.trim();
+            const suggestionsDisplay = document.getElementById('suggestions');
+
+            if (!apiKey || location.length < 2) {
+                suggestionsDisplay.innerHTML = '';
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://api.weatherapi.com/v1/search.json?key=${apiKey}&q=${encodeURIComponent(location)}`);
+                const data = await response.json();
+
+                suggestionsDisplay.innerHTML = data
+                    .map(city => `<div onclick="selectCity('${city.name}')">${city.name}, ${city.country}</div>`)
+                    .join('');
+            } catch (error) {
+                suggestionsDisplay.innerHTML = `<p class="error">An error occurred: ${error.message}</p>`;
+            }
+        }
+
+        function selectCity(cityName) {
+            document.getElementById('location-input').value = cityName;
+            document.getElementById('suggestions').innerHTML = '';
+        }
+
+        async function fetchWeather() {
+            const apiKey = document.getElementById('api-key-input').value.trim();
+            const location = document.getElementById('location-input').value.trim();
+            const weatherDisplay = document.getElementById('weather-display');
+            const forecastToggle = document.getElementById('forecast-toggle');
+
+            if (!apiKey || !location) {
+                alert('Please enter both API key and location');
+                return;
+            }
+
+            try {
+                weatherDisplay.innerHTML = '<p class="loading">Loading...</p>';
+                const response = await fetch(`https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${encodeURIComponent(location)}`);
+                const data = await response.json();
+
+                currentWeatherData = data.current;
+
+                weatherDisplay.innerHTML = `
+                    <div class="weather-card">
+                        <h2>${data.location.name}, ${data.location.country}</h2>
+                        <p class="temperature">${data.current.temp_c}°C</p>
+                        <p>Condition: ${data.current.condition.text}</p>
+                        <p>Humidity: ${data.current.humidity}%</p>
+                        <p>Wind: ${data.current.wind_kph} km/h</p>
+                    </div>
+                `;
+
+                forecastToggle.style.display = 'block';
+            } catch (error) {
+                weatherDisplay.innerHTML = `<p class="error">An error occurred: ${error.message}</p>`;
+            }
+        }
+
+        async function fetchForecast() {
+            const apiKey = document.getElementById('api-key-input').value.trim();
+            const location = document.getElementById('location-input').value.trim();
+            const forecastDisplay = document.getElementById('forecast-display');
+
+            if (!apiKey || !location) {
+                alert('Please enter both API key and location');
+                return;
+            }
+
+            try {
+                forecastDisplay.innerHTML = '<p class="loading">Loading forecast...</p>';
+                const response = await fetch(`https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${encodeURIComponent(location)}&days=5`);
+                const data = await response.json();
+
+                forecastDisplay.innerHTML = `
+                    <div class="forecast-pills">
+                        ${data.forecast.forecastday.map(day => `
+                            <div class="forecast-pill">
+                                <h4>${new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}</h4>
+                                <p>${day.day.avgtemp_c}°C</p>
+                                <img src="${day.day.condition.icon}" alt="${day.day.condition.text}" width="40">
+                                <p>${day.day.condition.text}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                forecastDisplay.innerHTML = `<p class="error">An error occurred: ${error.message}</p>`;
+            }
+        }
+
+        function exportData() {
+            if (!currentWeatherData) {
+                alert('No weather data available to export');
+                return;
+            }
+
+            const csvData = [
+                ['City', 'Temperature (°C)', 'Condition', 'Humidity (%)', 'Wind Speed (km/h)'],
+                [
+                    document.getElementById('location-input').value,
+                    currentWeatherData.temp_c,
+                    currentWeatherData.condition.text,
+                    currentWeatherData.humidity,
+                    currentWeatherData.wind_kph
+                ]
+            ];
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+
+            csvData.forEach(row => {
+                csvContent += row.join(',') + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', 'weather_data.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
